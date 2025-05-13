@@ -292,6 +292,7 @@ class Credit:
                     break
 
         df_payment_plan.drop(columns=['Principal'], inplace=True)
+        df_payment_plan.dropna(inplace=True)
         return df_payment_plan
 
     @staticmethod
