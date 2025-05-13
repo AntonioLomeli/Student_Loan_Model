@@ -2,6 +2,8 @@ import flet as ft
 import pandas as pd
 from .users import Student, Major
 from .credit_metrics import Credit
+import io
+from io import BytesIO 
 
 def show_alert_message(page, message):
    # Función para cerrar el diálogo
@@ -109,7 +111,9 @@ class CreditSimulatorView:
                                 ], expand=1)
         
 
-        self.txt_credit_accepted = ft.TextField(value='Credit Accepted', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
+        self.txt_credit_accepted = ft.TextField(value='Credit Accepted', visible=False, read_only=True, 
+                                                width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200,
+                                                expand=True, multiline=True)
         self.txt_total_payment = ft.TextField(label='Total Payment', value=0, visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
 
         self.txt_ir_studying = ft.TextField(label='IR while studying', value='0.00%', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
@@ -125,20 +129,27 @@ class CreditSimulatorView:
         self.update_student_data(e=None)
         self.update_major_data(e=None)
 
-        body = ft.Column([  
+        body = ft.Row([
+                ft.Column(
+                        [ 
                             ft.Text("Student Credit Simulator", size=30, weight=ft.FontWeight.BOLD),
                             ft.Row([
                                     first_section,
                                     second_section
                                     ], 
-                                    expand=True, scroll=ft.ScrollMode.AUTO),
+                                    ),
                             third_section,
                         ], 
                         expand=True, 
                         alignment=ft.MainAxisAlignment.START,
-                        scroll=ft.ScrollMode.AUTO,
+                        scroll=ft.ScrollMode.ALWAYS,
                         spacing=5
                         )
+                        ],
+                    scroll=ft.ScrollMode.ALWAYS,
+                    expand = True
+        )
+
 
         self.body = body
         return body
@@ -242,12 +253,12 @@ class CreditSimulatorView:
                     print(-credit.data_payments_complete['Total_Payment_PV'].sum())
                     print(credit.data_payments_complete)
 
-                self.update_credit_info_txt(credit_payed=True if self.credit.payed else False)
+                self.update_credit_info_txt(credit_payed=True if self.credit.payed else False, message = self.credit.message)
                 self.update_auxiliar_views = True
             except:
                 raise
 
-    def update_credit_info_txt(self, unhide=True, credit_payed = True):
+    def update_credit_info_txt(self, unhide=True, credit_payed = True, message:str="Credit Accepted"):
         list_txt = [self.txt_ir_studying, self.txt_ir_first, self.txt_ir_second, self.txt_ir_third]
         for txt in list_txt:
             txt.visible = unhide
@@ -257,7 +268,7 @@ class CreditSimulatorView:
 
         if unhide and credit_payed:
             self.txt_credit_accepted.fill_color = ft.Colors.GREEN_200
-            self.txt_credit_accepted.value = "Credit Accepted"
+            self.txt_credit_accepted.value = message
             self.txt_total_payment.value = f'{self.credit.total_payed:,.2f}'
             self.txt_ir_studying.value = '8.00%'
             for i in range(1,4):
@@ -274,7 +285,7 @@ class CreditSimulatorView:
                 txt.visible = False
             self.txt_total_payment.visible = False
             self.txt_credit_accepted.visible = True
-            self.txt_credit_accepted.value = "Reject, payment capacity is not enough"
+            self.txt_credit_accepted.value = message
             self.txt_credit_accepted.fill_color = ft.Colors.RED_100
         
         self.page.update()
@@ -355,7 +366,7 @@ class PaymentPlanView:
                             
                             ],
                         expand=True,
-                        scroll=ft.ScrollMode.AUTO,
+                        scroll=ft.ScrollMode.ALWAYS,
                         )
 
         return self.body
@@ -374,10 +385,50 @@ class PaymentPlanView:
         self.body.controls[0].controls[1].controls[0].controls[0] = new_table_object
         self.page.update()
 
-    def export_to_excel(self, e):
+    def export_to_excel_original(self, e):
         # Export the current DataFrame to an Excel file
         self.payment_plan.to_excel("payment_plan.xlsx", index=False)
         show_alert_message(self.page, "Payment plan exported to payment_plan.xlsx")
+
+    def export_to_excel(self, e):
+        # Create Excel file in memory
+        output = BytesIO()
+        self.payment_plan.to_excel(output, index=False)
+        
+        # Seek to the beginning of the stream
+        output.seek(0)
+        
+        # Get bytes data for download
+        excel_data = output.getvalue()
+        
+        # Create a file picker for saving (downloading) the file
+        def on_save_result(e: ft.FilePickerResultEvent):
+            if e.path:
+                # Success message after download dialog is shown
+                PaymentPlanView.show_alert_message(self.page, "Payment plan exported successfully!")
+        
+        save_file_picker = ft.FilePicker(on_result=lambda e: on_save_result(e, excel_data))
+        
+        # Add the file picker to the page if not already added
+        # if not hasattr(self, 'save_file_picker_added') or not self.save_file_picker_added:
+        self.page.overlay.append(save_file_picker)
+        self.page.update()
+        self.save_file_picker_added = True
+        
+        # Trigger the save file dialog with the Excel data
+        save_file_picker.save_file(
+            allowed_extensions=["xlsx"],
+        )
+        
+        # Alternatively, if you're using Flet's latest version with direct download support:
+        # self.page.download(bytes_data=excel_data, filename="payment_plan.xlsx")
+
+    # Example of the alert message function (if not already defined)
+    @staticmethod
+    def show_alert_message(page, message):
+        page.snack_bar = ft.SnackBar(content=ft.Text(message))
+        page.snack_bar.open = True
+        page.update()
 
 
     @staticmethod
@@ -431,10 +482,25 @@ class ScoresView:
 
         datatable_details = PaymentPlanView.dataframe_to_datatable(dataframe_details)
 
-        body = ft.Column([
-                            first_row,
-                            ft.Column([datatable_details], expand=True, scroll=ft.ScrollMode.AUTO)
-                        ])
+        body = ft.Row(
+            [
+                ft.Column(
+                    [
+                        first_row,
+                        ft.ListView(
+                            [datatable_details],
+                            expand=True,
+                            auto_scroll=True,
+                            horizontal=True  # Esto habilita el scroll horizontal
+                        )
+                    ],
+                    scroll=ft.ScrollMode.AUTO,
+                    expand=True
+                )
+            ],
+            expand=True,
+            scroll = ft.ScrollMode.AUTO
+        )
         
         self.body = body
         return self.body

@@ -40,10 +40,10 @@ class Credit:
         
 
         acceptance = self.calculate_metrics_for_risk_assesment("", "Evaluation at Admissions")
-        print(acceptance)
         
         if acceptance:
             self.payed = True
+            self.message = "Credit Accepted"
             df_payments_studying = Credit.payment_during_study(semester_internship, self.semester_payment, payment_internship, self.n_semesters, 0.08)
             self.list_amortization_tables['Payments_Studying']= Credit.negate_df_except_month(df_payments_studying)
 
@@ -99,9 +99,11 @@ class Credit:
                         self.payed = True
                     else:
                         self.payed = False
+                        self.message = "Rejected: Insufficient payment capacity"
           
         else:
             self.payed = False
+            self.message = "Rejected: The student or guarantor does not meet the eligibility requirements"
 
         # Concatenate all the dataframes and calculate PV, considering a cost of money of 8%
         df_payments_complete = self.create_concat_payments(0.08) if acceptance else pd.DataFrame()
@@ -361,7 +363,7 @@ class Credit:
                 low = mid
             if abs(cuota - pmt) < precision:
                 break
-        return (mid*12) - (mid*12*(0.16))
+        return (mid*12) - (mid*12*(0.16)/100)
 
 class PaymentPlan:
     def __init__(self, pirincipal, begin, end):
