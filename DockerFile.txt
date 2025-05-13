@@ -5,13 +5,22 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Copia el contenido del proyecto al contenedor
-COPY . .
+COPY requirements.txt .
 
-# Instala las dependencias del archivo requirements.txt
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Crea un entorno virtual (si no quieres usar uno global) y actívalo
+RUN python -m venv /opt/venv
+
+# Usa el entorno virtual
+RUN . /opt/venv/bin/activate
+
+# Instala las dependencias
+RUN pip install -r requirements.txt
+
+# Copia el resto de los archivos de tu proyecto al contenedor
+COPY . .
 
 # Expón el puerto que Railway necesita (Railway lo mapeará al externo)
 EXPOSE 8000
 
 # Comando que se ejecutará al iniciar el contenedor
-CMD ["python", "app.py"]
+CMD ["/opt/venv/bin/python", "app.py"]
