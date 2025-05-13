@@ -145,4 +145,7 @@ for key, value in dic_drive_links.items():
     dic_dataframes[key] = data
 
 object = App(dic_dataframes)
-ft.app(target=object.main, view=ft.WEB_BROWSER)
+ft.app(target=object.main, 
+       view=ft.WEB_BROWSER,
+       port=int(os.environ.get("PORT", 8000))
+        )
