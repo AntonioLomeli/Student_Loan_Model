@@ -41,13 +41,10 @@ class ControlsView:
             views.show_alert_message(self.page, "First simulate a credit to show something on this view")
         else:
             pre_requisites = getattr(self, 'CreditSimulator')
-            if not hasattr(self, 'PaymentPlan'):
-                view_instance = views.PaymentPlanView(self.page, pre_requisites)
-                setattr(self, 'PaymentPlan', view_instance)
-                self.views['PaymentPlan'] = view_instance.create_controls() # Update
-                return view_instance.create_controls()
-            else:
-                return self.views['PaymentPlan']
+            view_instance = views.PaymentPlanView(self.page, pre_requisites)
+            setattr(self, 'PaymentPlan', view_instance)
+            self.views['PaymentPlan'] = view_instance
+            return view_instance.create_controls()
 
     
     def update_scores(self):
@@ -57,17 +54,14 @@ class ControlsView:
             views.show_alert_message(self.page, "First simulate a credit to show something on this view")
         else:
             pre_requisites = getattr(self, 'CreditSimulator')
-            print(getattr(pre_requisites, "update_auxiliar_views"))
-            if not hasattr(self, 'ScoresView'):
-                student_data = getattr(pre_requisites, 'student')
-                credit_data = getattr(pre_requisites, 'credit')
+            student_data = getattr(pre_requisites, 'student')
+            credit_data = getattr(pre_requisites, 'credit')
 
-                view_instance = views.ScoresView(self.page, student_data, credit_data)
-                setattr(self, 'ScoresView', view_instance)
-                self.views['ScoresView'] = view_instance.create_controls()
-                return view_instance.create_controls()
-            else:
-                return self.views['ScoresView']
+            view_instance = views.ScoresView(self.page, student_data, credit_data)
+            setattr(self, 'ScoresView', view_instance)
+            self.views['ScoresView'] = view_instance
+            return view_instance.create_controls()
+            
 
 
 class App():
@@ -130,6 +124,8 @@ class App():
 
         if isinstance(new_body_controls, ft.Control):
             self.update_body(new_body_controls)
+        else:
+            print("error in update")
 
     def update_body(self, new_body):
         # self.body.controls[2].controls.clear()
