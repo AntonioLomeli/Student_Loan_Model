@@ -4,17 +4,12 @@ FROM python:3.12-slim
 # Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia el contenido del proyecto al contenedor
+# Copia el archivo requirements.txt al contenedor
 COPY requirements.txt .
 
-# Crea un entorno virtual (si no quieres usar uno global) y actívalo
-RUN python -m venv /opt/venv
-
-# Usa el entorno virtual
-RUN . /opt/venv/bin/activate
-
-# Instala las dependencias
+# Instala las dependencias directamente en el contenedor
 RUN pip install -r requirements.txt
+
 
 # Copia el resto de los archivos de tu proyecto al contenedor
 COPY . .
