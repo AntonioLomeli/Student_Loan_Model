@@ -1,24 +1,37 @@
 import flet as ft
 import pandas as pd
-import users
-from credit_metrics import Credit
+from .users import Student, Major
+from .credit_metrics import Credit
 
 def show_alert_message(page, message):
-    alert = ft.AlertDialog(
+   # Función para cerrar el diálogo
+    def close_dialog(e):
+        page.dialog.open = False
+        page.update()
+    
+    # Crear el diálogo
+    dlg = ft.AlertDialog(
         modal=True,
-        title=ft.Text("Alert"),
+        title=ft.Text("Alerta"),
         content=ft.Text(message),
         actions=[
-            ft.TextButton("OK", on_click=lambda e: page.dialog.close()),
+            ft.TextButton("OK", on_click=close_dialog),
         ],
+        actions_alignment=ft.MainAxisAlignment.END,
+        on_dismiss=lambda e: print("Dialog dismissed!"),
     )
-    page.dialog = alert
-    alert.open = True
+    
+    # Mostrar el diálogo
+    page.dialog = dlg
+    page.dialog.open = True
     page.update()
+
+
 
 class CreditSimulatorView:
     def __init__(self, page, dic_information=None):
         self.page = page
+        self.update_auxiliar_views = False
 
         for key, value in dic_information.items():
             setattr(self, key, value)
@@ -58,7 +71,7 @@ class CreditSimulatorView:
 
         self.total_credits = ft.TextField(label="Total Credits", border=ft.InputBorder.UNDERLINE, value="0", width=150, on_change=self.update_total_cost)
 
-        self.credit_cost = 3800 # Get credit cost from database
+        self.credit_cost = 2800 # Get credit cost from database
         self.lbl_cost_per_credit = ft.TextField(label = "Cost per Credit",
                                                 value=f"{self.credit_cost:,.1f}", 
                                                 width=150, read_only=True, border=ft.InputBorder.UNDERLINE)
@@ -99,10 +112,10 @@ class CreditSimulatorView:
         self.txt_credit_accepted = ft.TextField(value='Credit Accepted', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
         self.txt_total_payment = ft.TextField(label='Total Payment', value=0, visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
 
-        self.txt_ir_studying = ft.TextField(label='IR while studying', value='8.00%', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
-        self.txt_ir_first = ft.TextField(label='IR for first payment plan', value='10.00%', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
-        self.txt_ir_second = ft.TextField(label='IR for second payment plan', value='8.00%', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
-        self.txt_ir_third = ft.TextField(label='IR for third payment plan', value='8.00%', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
+        self.txt_ir_studying = ft.TextField(label='IR while studying', value='0.00%', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
+        self.txt_ir_first = ft.TextField(label='IR for first payment plan', value='0.00%', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
+        self.txt_ir_second = ft.TextField(label='IR for second payment plan', value='0.00%', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
+        self.txt_ir_third = ft.TextField(label='IR for third payment plan', value='0.00%', visible=False, read_only=True, width=200, border = ft.InputBorder.UNDERLINE, filled=True, fill_color=ft.Colors.GREEN_200)
         
         third_section = ft.Row([
                                  ft.Column([self.txt_credit_accepted, self.txt_total_payment]),
@@ -151,6 +164,7 @@ class CreditSimulatorView:
     def update_amount_owed(self, e):
         pct_scholarship = self.scholarship_pct
         pct_loan = float(self.txt_loan_pct.value.strip())/100
+
         payment_tutor = 1 - pct_scholarship - pct_loan
         
         self.update_attribute_control(self.payment_tutor, self.txt_payment_by_tutor, payment_tutor, suffix="%", multiplier=100)
@@ -159,6 +173,7 @@ class CreditSimulatorView:
         self.page.update()
 
     def update_student_data(self, e):
+        self.update_auxiliar_views = True
         student_name = self.txt_student_name.value
         student_data = self.data_students[self.data_students['Nombre'] == student_name].iloc[0]
 
@@ -176,7 +191,8 @@ class CreditSimulatorView:
     
     def update_major_data(self, e):
         major_name = self.lstbox_major.value
-        major_data = self.data_majors[self.data_majors['Carrera'] == major_name].iloc[0]
+        print(major_name)
+        major_data = self.data_majors[self.data_majors['Carrera'] == major_name].iloc[0].copy()
         
         self.total_major_cost = self.credit_cost * major_data['Total Creditos']
 
@@ -194,51 +210,72 @@ class CreditSimulatorView:
         control.value = f"{attribute*multiplier:,.1f}{suffix}"
 
     def calculate_credit_metrics(self, e):
+
         student_name = self.txt_student_name.value
-        student_data = self.data_students[self.data_students['Nombre'] == student_name].iloc[0]
+        student_data = self.data_students[self.data_students['Nombre'] == student_name].iloc[0].copy()
         major_name = self.lstbox_major.value
-        major_data = self.data_majors[self.data_majors['Carrera'] == major_name].iloc[0]
+        major_data = self.data_majors[self.data_majors['Carrera'] == major_name].iloc[0].copy()
         
         # Create a Major object
-        major = users.Major(major_data)
+        major = Major(major_data)
         # Create a Student object
-        student = users.Student(student_data, major)
+        student = Student(student_data, major)
 
-        self.amount_owed = self.total_major_cost * float(self.txt_loan_pct.value.strip())/100
-        # Create a Credit object
-        try:
-            credit = Credit(student, major, self.amount_owed, int(self.txt_n_semester.value), 0.08)
-            
-            # Simulate payments
-            credit.simulate_payments(semester_internship=5, payment_internship=3000)
-            self.payment_plan = credit.data_payments_complete
-            self.list_amortization_tables = credit.list_amortization_tables
-            self.credit = credit
-            self.student = student
-            self.major = major
-            print(-credit.data_payments_complete['Total_Payment_PV'].sum())
-            print(credit.data_payments_complete)
+        if float(self.txt_loan_pct.value.strip()) >= 30:
+            self.amount_owed = self.total_major_cost * float(self.txt_loan_pct.value.strip())/100
+            # Create a Credit object
+            try:
+                if not hasattr(student, 'aval'):
+                    student.get_aval(data_avales=self.data_avales)
 
-            self.update_credit_info_txt()
+                credit = Credit(student, self.amount_owed, int(self.txt_n_semester.value), 0.08)
+                
+                # Simulate payments
+                credit.simulate_payments(semester_internship=5, payment_internship=3000)
+                self.payment_plan = credit.data_payments_complete
+                self.list_amortization_tables = credit.list_amortization_tables
+                self.data_scores_credit = credit.dictionary_scores_credit
+                self.credit = credit
+                self.student = student
+                self.major = major
+                if self.credit.payed:
+                    print(-credit.data_payments_complete['Total_Payment_PV'].sum())
+                    print(credit.data_payments_complete)
 
-        except ValueError:
-            print("Error: The amount owed is greater than the total cost of the major.")
-            self.txt_credit_accepted.Value = "This person doesn't have the enough payment capacity"
-            self.txt_credit_accepted.visible = True
-            self.page.update()
-            return
-    
-    def update_credit_info_txt(self, unhide=True):
-        self.txt_ir_studying.visible = unhide
-        self.txt_ir_first.visible = unhide
-        self.txt_ir_second.visible = unhide
-        self.txt_ir_third.visible = unhide
+                self.update_credit_info_txt(credit_payed=True if self.credit.payed else False)
+                self.update_auxiliar_views = True
+            except:
+                raise
+
+    def update_credit_info_txt(self, unhide=True, credit_payed = True):
+        list_txt = [self.txt_ir_studying, self.txt_ir_first, self.txt_ir_second, self.txt_ir_third]
+        for txt in list_txt:
+            txt.visible = unhide
 
         self.txt_total_payment.visible = unhide
         self.txt_credit_accepted.visible = unhide
 
-        if unhide:
+        if unhide and credit_payed:
+            self.txt_credit_accepted.fill_color = ft.Colors.GREEN_200
+            self.txt_credit_accepted.value = "Credit Accepted"
             self.txt_total_payment.value = f'{self.credit.total_payed:,.2f}'
+            self.txt_ir_studying.value = '8.00%'
+            for i in range(1,4):
+                try:
+                    ir = self.data_scores_credit[i]['result']
+                    list_txt[i].value =  f'{ir*100:,.2f}%'
+                except IndexError:
+                    list_txt[i].value =  "NA"
+
+
+        
+        elif not credit_payed:
+            for txt in list_txt:
+                txt.visible = False
+            self.txt_total_payment.visible = False
+            self.txt_credit_accepted.visible = True
+            self.txt_credit_accepted.value = "Reject, payment capacity is not enough"
+            self.txt_credit_accepted.fill_color = ft.Colors.RED_100
         
         self.page.update()
 
@@ -274,11 +311,11 @@ class PaymentPlanView:
             on_change= self.navigation_rail_change,
         )
 
-        self.txt_student_name = ft.TextField(label="Student Name", value=self.student.Nombre, width=500, read_only=True)
-        self.txt_student_age = ft.TextField(label="Age", value=str(self.student.Edad), width=100, read_only=True)
-        self.txt_avg_grade = ft.TextField(label="Average Grade", value=str(self.student.data['Promedio']), width=100, read_only=True)
+        self.txt_student_name = ft.TextField(label="Student Name", value=self.student.nombre, width=500, read_only=True)
+        self.txt_student_age = ft.TextField(label="Age", value=str(self.student.edad), width=100, read_only=True)
+        self.txt_avg_grade = ft.TextField(label="Average Grade", value=str(self.student.promedio), width=100, read_only=True)
 
-        self.txt_major_name = ft.TextField(label="Major Name", value=self.major.Carrera, width=400, read_only=True)
+        self.txt_major_name = ft.TextField(label="Major Name", value=self.major.carrera, width=400, read_only=True)
         self.txt_principal = ft.TextField(label="Amount Owed", value=f'{self.credit.principal:,.1f}', width=300, read_only=True)
 
         self.txt_total_payed = ft.TextField(label="Total Payed", value=f'{self.credit.total_payed:,.1f}', width=400, read_only=True)
@@ -337,7 +374,6 @@ class PaymentPlanView:
         self.body.controls[0].controls[1].controls[0].controls[0] = new_table_object
         self.page.update()
 
-
     def export_to_excel(self, e):
         # Export the current DataFrame to an Excel file
         self.payment_plan.to_excel("payment_plan.xlsx", index=False)
@@ -352,4 +388,79 @@ class PaymentPlanView:
                 ft.DataCell(ft.Text(f"{value:,.2f}" if isinstance(value, (int, float)) else str(value))) for value in row
             ]) for row in df.values
         ]
-        return ft.DataTable(columns=columns, rows=rows, heading_row_color=ft.Colors.GREEN_100)
+        return ft.DataTable(columns=columns, rows=rows, heading_row_color=ft.Colors.BLUE_200)
+
+
+
+class ScoresView:
+    def __init__(self, page, student, credit):
+        self.page = page
+        self.student = student
+        self.major = self.student.major
+        self.credit = credit
+        self.data_credit_scores = self.credit.dictionary_scores_credit
+        
+
+    def create_controls(self):
+        self.txt_student_name = ft.TextField(label="Student Name", value=self.student.nombre, width=500, read_only=True)
+
+        self.txt_major_name = ft.TextField(label="Major Name", value=self.major.carrera, width=400, read_only=True)
+        self.txt_principal = ft.TextField(label="Amount Owed", value=f'{self.credit.principal:,.1f}', width=300, read_only=True)
+
+        self.txt_total_payed = ft.TextField(label="Total Payed", value=f'{self.credit.total_payed:,.1f}', width=400, read_only=True)
+        self.txt_total_payment_periods = ft.TextField(label="Total Payment Periods", value=f'{round(self.credit.total_payment_periods/12,1)} Years', width=200, read_only=True)
+
+        first_row = ft.Column([
+                                    ft.Row([self.txt_student_name,], expand=True),
+                                    ft.Row([self.txt_major_name, self.txt_principal], expand=True),
+                                    ft.Row([self.txt_total_payed, self.txt_total_payment_periods], expand=True)
+                                    ],
+                                    height=200)
+
+        dataframe_details = self.create_dataframe_details().fillna(0).sort_values(by="Person", ascending=False)
+
+        total_row = {}
+        for col in dataframe_details.columns:
+            if col not in ["Aspect Evaluated", "Person"]:
+                # Suma ignorando NaN
+                total_row[col] = dataframe_details[col].sum(numeric_only=True)
+            else:
+                total_row[col] = "Gran Total" if col == "Aspect Evaluated" else ""
+        
+        dataframe_details = pd.concat([dataframe_details, pd.DataFrame([total_row])], ignore_index=True)
+
+        datatable_details = PaymentPlanView.dataframe_to_datatable(dataframe_details)
+
+        body = ft.Column([
+                            first_row,
+                            ft.Column([datatable_details], expand=True, scroll=ft.ScrollMode.AUTO)
+                        ])
+        
+        self.body = body
+        return self.body
+        
+    def create_dataframe_details(self):
+        dfs  = []
+        for dictionary in self.data_credit_scores:
+            student_data = dictionary["student_metrics"]["scores"]
+            df_student = pd.DataFrame([student_data]).T
+            df_student.columns = [dictionary["stage"]]
+            df_student["Person"] = "Student"
+            df_student = df_student.set_index("Person", append=True)
+            
+            aval_data = dictionary["aval_metrics"]["scores"]
+            df_aval = pd.DataFrame([aval_data]).T
+            df_aval.columns = [dictionary["stage"]]
+            df_aval["Person"] = "Aval"
+            df_aval = df_aval.set_index("Person", append=True)
+
+            df_concat = pd.concat([df_student, df_aval], axis=0)
+            print(df_concat)
+            dfs.append(df_concat)
+
+        df_final_concat = pd.concat(dfs, axis=1)
+        print(df_final_concat)
+        return df_final_concat.reset_index(drop=False).rename(columns={"level_0":"Aspect Evaluated"})
+
+
+
