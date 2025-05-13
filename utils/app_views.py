@@ -2,8 +2,8 @@ import flet as ft
 import pandas as pd
 from .users import Student, Major
 from .credit_metrics import Credit
+import datetime
 import io
-from io import BytesIO 
 
 def show_alert_message(page, message):
    # Función para cerrar el diálogo
@@ -322,6 +322,8 @@ class PaymentPlanView:
             on_change= self.navigation_rail_change,
         )
 
+        self.selected_df_key = "Payment Plan"
+
         self.txt_student_name = ft.TextField(label="Student Name", value=self.student.nombre, width=500, read_only=True)
         self.txt_student_age = ft.TextField(label="Age", value=str(self.student.edad), width=100, read_only=True)
         self.txt_avg_grade = ft.TextField(label="Average Grade", value=str(self.student.promedio), width=100, read_only=True)
@@ -375,6 +377,7 @@ class PaymentPlanView:
         print(f"Selected index: {e.control.selected_index}")
 
         selected_key = list(self.list_amortization_tables.keys())[e.control.selected_index]
+        self.selected_df_key = selected_key.replace(" ","_")
         
         new_table = self.list_amortization_tables[selected_key]
         if "Month" not in new_table.columns:
@@ -385,43 +388,13 @@ class PaymentPlanView:
         self.body.controls[0].controls[1].controls[0].controls[0] = new_table_object
         self.page.update()
 
-    def export_to_excel_original(self, e):
+    def export_to_excel(self, e):
         # Export the current DataFrame to an Excel file
         self.payment_plan.to_excel("payment_plan.xlsx", index=False)
         show_alert_message(self.page, "Payment plan exported to payment_plan.xlsx")
 
-    def export_to_excel(self, e):
-        # Create Excel file in memory
-        output = BytesIO()
-        self.payment_plan.to_excel(output, index=False)
-        
-        # Seek to the beginning of the stream
-        output.seek(0)
-        
-        # Get bytes data for download
-        excel_data = output.getvalue()
-        
-        # Create a file picker for saving (downloading) the file
-        def on_save_result(e: ft.FilePickerResultEvent):
-            if e.path:
-                # Success message after download dialog is shown
-                PaymentPlanView.show_alert_message(self.page, "Payment plan exported successfully!")
-        
-        save_file_picker = ft.FilePicker(on_result=lambda e: on_save_result(e, excel_data))
-        
-        # Add the file picker to the page if not already added
-        # if not hasattr(self, 'save_file_picker_added') or not self.save_file_picker_added:
-        self.page.overlay.append(save_file_picker)
-        self.page.update()
-        self.save_file_picker_added = True
-        
-        # Trigger the save file dialog with the Excel data
-        save_file_picker.save_file(
-            allowed_extensions=["xlsx"],
-        )
-        
-        # Alternatively, if you're using Flet's latest version with direct download support:
-        # self.page.download(bytes_data=excel_data, filename="payment_plan.xlsx")
+
+
 
     # Example of the alert message function (if not already defined)
     @staticmethod

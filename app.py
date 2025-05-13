@@ -45,7 +45,7 @@ class ControlsView:
                 view_instance = views.PaymentPlanView(self.page, pre_requisites)
                 setattr(self, 'PaymentPlan', view_instance)
                 self.views['PaymentPlan'] = view_instance.create_controls() # Update
-                return self.views['PaymentPlan']
+                return view_instance.create_controls()
             else:
                 return self.views['PaymentPlan']
 
@@ -57,6 +57,7 @@ class ControlsView:
             views.show_alert_message(self.page, "First simulate a credit to show something on this view")
         else:
             pre_requisites = getattr(self, 'CreditSimulator')
+            print(getattr(pre_requisites, "update_auxiliar_views"))
             if getattr(pre_requisites, "update_auxiliar_views") or not hasattr(self, 'ScoresView'):
                 student_data = getattr(pre_requisites, 'student')
                 credit_data = getattr(pre_requisites, 'credit')
@@ -75,6 +76,7 @@ class App():
 
     def main(self, page: ft.Page):
         self.page = page
+
         self.page.title = "Student Credit Calculator"
         self.edit_body_view = ControlsView(self.page, self.dic_information)
         self.edit_body_view.create_controls_view()
